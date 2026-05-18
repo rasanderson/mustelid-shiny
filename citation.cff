@@ -1,0 +1,37 @@
+cff-version: 1.2.0
+title: "MegaDetector-Classifier: Open-Source Classification Fine-Tuning for Wildlife Camera Traps"
+message: "If you use MegaDetector-Classifier, please cite it using the metadata from this file."
+type: software
+version: "1.0.0"
+date-released: "2026-05-15"
+authors:
+  - given-names: Andres
+    family-names: Hernandez
+  - given-names: Zhongqi
+    family-names: Miao
+  - given-names: Luisa
+    family-names: Vargas
+  - given-names: Sara
+    family-names: Beery
+  - given-names: Rahul
+    family-names: Dodhia
+  - given-names: Juan
+    family-names: Lavista
+  - name: "Microsoft AI for Good Lab"
+identifiers:
+  - type: url
+    value: "https://arxiv.org/abs/2405.12930"
+    description: "Pytorch-Wildlife: A Collaborative Deep Learning Framework for Conservation"
+repository-code: "https://github.com/microsoft/MegaDetector-Classifier"
+url: "https://microsoft.github.io/MegaDetector-Classifier/"
+keywords:
+  - MegaDetector-Classifier
+  - camera-trap
+  - species classification
+  - fine-tuning
+  - transfer learning
+  - wildlife monitoring
+  - conservation
+  - PyTorch-Wildlife
+  - ai-for-good
+license: MIT
