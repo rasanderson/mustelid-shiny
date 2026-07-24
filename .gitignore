@@ -22,3 +22,12 @@ Brewfile
 site/
 archive/
 *.code-workspace
+
+# Ignore jpg under data
+data/**/*.jpg
+demo_data/**/*.JPG
+
+# Model weights too big to commit
+weights/
+
+
