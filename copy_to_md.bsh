@@ -22,7 +22,7 @@ rm -rf "$IMGDIR"
 mkdir -p "$IMGDIR"
 
 CSV="$DST/annotations.csv"
-echo "filename,class_id,class_name" > "$CSV"
+echo "path,classification,label" > "$CSV"
 
 for cls in "${classes[@]}"
 do
