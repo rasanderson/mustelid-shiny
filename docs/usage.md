@@ -98,6 +98,30 @@ All training parameters live in `configs/config.yaml`. Edit this file before run
 | `num_layers` | ResNet depth — `18` or `50` |
 | `weights_init` | Initial weights — `ImageNet` for transfer learning |
 
+### ResNet Implementation Details (Explicit)
+
+Training uses `PlainResNetClassifier`, which builds a torchvision-style ResNet backbone plus a dataset-specific linear classifier head.
+
+- Set `num_layers: 18` to use a ResNet-18 backbone
+- Set `num_layers: 50` to use a ResNet-50 backbone
+- Exactly one backbone is active per run (not both at once)
+
+Transfer-learning behavior:
+
+- The feature extractor is initialized from ImageNet pretrained ResNet weights
+- A new classifier head is created for your configured `num_classes`
+- Both feature extractor and classifier head are fine-tuned during training
+- Feature extractor and classifier head use separate optimization parameter groups (`lr_feature` vs `lr_classifier` and related momentum/weight decay settings)
+
+Example backbone selection in `configs/config.yaml`:
+
+```yaml
+# choose one per run
+num_layers: 18   # ResNet-18
+# num_layers: 50 # ResNet-50
+weights_init: ImageNet
+```
+
 ### Optimization Parameters
 
 | Parameter | Description |

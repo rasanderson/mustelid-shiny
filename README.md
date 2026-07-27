@@ -33,6 +33,21 @@ MegaDetector-Classifier is a training toolkit for fine-tuning ResNet-based speci
 - YAML-based configuration — no code changes required for most use cases
 - Demo data included for immediate testing without your own dataset
 
+### How ResNet Fine-Tuning Works In This Repo
+
+MegaDetector-Classifier trains a single ResNet-based classifier per run, selected by `num_layers` in `configs/config.yaml`:
+
+- `num_layers: 18` → ResNet-18 backbone
+- `num_layers: 50` → ResNet-50 backbone
+
+The training model (`PlainResNetClassifier`) uses transfer learning by initializing the feature extractor from ImageNet pretrained torchvision ResNet weights, then attaching a new classification head sized to your `num_classes`.
+
+Important behavior details:
+
+- Only one backbone is used per run (ResNet-18 **or** ResNet-50, not both simultaneously)
+- Both the backbone (feature extractor) and classifier head are optimized during training
+- Backbone and head use separate optimizer parameter groups (`lr_feature` and `lr_classifier` settings)
+
 **Designed for:**
 - Conservation practitioners adapting existing classifiers to new geographic regions
 - Researchers adding new species to the PyTorch-Wildlife model zoo
@@ -62,7 +77,16 @@ conda activate PT_Finetuning
 ## Quick Start
 
 1. Configure `configs/config.yaml` — set `dataset_root`, `annotation_dir`, `num_classes`, and `split_type`
-2. Run training:
+2. Choose the transfer-learning backbone with `num_layers`:
+
+```yaml
+# one model per run: choose exactly one
+num_layers: 18   # ResNet-18
+# num_layers: 50 # ResNet-50
+weights_init: ImageNet
+```
+
+3. Run training:
 
 ```bash
 python main.py
