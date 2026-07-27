@@ -30,6 +30,7 @@ MegaDetector-Classifier is a training toolkit for fine-tuning ResNet-based speci
 **Key capabilities:**
 - ResNet-18 and ResNet-50 classifier training using PyTorch Lightning
 - Three data-splitting strategies designed for camera-trap realities: random, location-based, and sequence-based
+- Built-in training augmentation (including pre-cropped mode); see [Training Augmentation Behavior](#training-augmentation-behavior)
 - YAML-based configuration — no code changes required for most use cases
 - Demo data included for immediate testing without your own dataset
 
@@ -100,6 +101,25 @@ enable_auto_cropping: False
 ```
 
 Output weights are saved to the `weights/` directory and can be loaded directly into PyTorch-Wildlife.
+
+### Training Augmentation Behavior
+
+Yes, data augmentation is applied during training, including when using pre-cropped images (`dataset_name: Custom_PreCropped`).
+
+Training split (`train`) uses randomized transforms:
+
+- `RandomResizedCrop((224, 224), scale=(0.7, 1.0), ratio=(0.8, 1.2))`
+- `RandomHorizontalFlip(p=0.5)`
+- `RandomVerticalFlip(p=0.5)`
+- `ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.2)`
+- `ToTensor()` and ImageNet normalization
+
+Validation, test, and prediction use non-random preprocessing:
+
+- `Resize((224, 224))`
+- `ToTensor()` and ImageNet normalization
+
+This setup is intentional: randomized transforms are used for training-time robustness, while evaluation/inference stay deterministic. In many datasets this improves generalization, but the exact accuracy impact depends on your data distribution.
 
 ## Data Preparation
 
