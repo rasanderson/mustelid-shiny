@@ -102,6 +102,30 @@ enable_auto_cropping: False
 
 Output weights are saved to the `weights/` directory and can be loaded directly into PyTorch-Wildlife.
 
+### Training CSV Outputs
+
+At the end of training, the run directory under `log/` also receives four CSV files next to `loss_accuracy.csv`:
+
+- `train_predictions.csv`
+- `test_predictions.csv`
+- `train_confusion_matrix.csv`
+- `test_confusion_matrix.csv`
+
+The prediction CSVs keep the annotation metadata from the split files and add six probability columns, one per class (`prob_class_0` through `prob_class_5`). The predicted class is the one with the highest probability across those six columns.
+
+The confusion-matrix CSVs use the same six-class order on both axes so train and test can be compared directly. They are written in the same logger/version directory as the other training artifacts, for example:
+
+```text
+log/Crop/Plain/Plain_<conf_id>/version_<n>/
+```
+
+If export is slow on large datasets, tune these two settings in `configs/config.yaml`:
+
+- `export_batch_size` (default `256`)
+- `export_num_workers` (default `4`)
+
+These control only the post-training CSV export pass and do not change the training dataloader.
+
 ### Training Augmentation Behavior
 
 Yes, data augmentation is applied during training, including when using pre-cropped images (`dataset_name: Custom_PreCropped`).

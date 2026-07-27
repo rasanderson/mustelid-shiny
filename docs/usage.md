@@ -185,6 +185,15 @@ python main.py
 
 Trained weights are saved to the `weights/` directory at the end of training. These weights follow the PyTorch-Wildlife classifier interface and can be loaded directly into the framework for inference on new images.
 
+The run directory under `log/` also receives these CSV files next to `loss_accuracy.csv`:
+
+- `train_predictions.csv`
+- `test_predictions.csv`
+- `train_confusion_matrix.csv`
+- `test_confusion_matrix.csv`
+
+The prediction CSVs preserve the annotation metadata and add six probability columns (`prob_class_0` through `prob_class_5`). The confusion-matrix CSVs use the same six-class order on both axes so train and test results are directly comparable.
+
 ---
 
 ## 6. Integration with MegaDetector

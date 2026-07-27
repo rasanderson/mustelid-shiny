@@ -5,13 +5,17 @@ import csv
 from datetime import datetime
 from tqdm import tqdm
 import random
+import pandas as pd
 
 import torch
 import torch.optim as optim
 import pytorch_lightning as pl
+from torch.utils.data import DataLoader
+from sklearn.metrics import confusion_matrix
 
 from .utils import acc
 from src import models
+from src.datasets.custom import data_transforms
 
 
 __all__ = [
@@ -180,13 +184,21 @@ class Plain(pl.LightningModule):
         if not self.epoch_history or self.logger is None:
             return
 
+        log_dir = self._get_artifact_dir()
+        if log_dir is None:
+            return
+
+        self._export_split_results(split='train', output_dir=log_dir)
+        self._export_split_results(split='test', output_dir=log_dir)
+
+    def _get_artifact_dir(self):
         log_dir = getattr(self.logger, 'log_dir', None)
         if not log_dir:
             save_dir = getattr(self.logger, 'save_dir', None)
             name = getattr(self.logger, 'name', '')
             version = getattr(self.logger, 'version', '')
             if save_dir is None:
-                return
+                return None
             log_dir = os.path.join(save_dir, str(name), f'version_{version}')
 
         os.makedirs(log_dir, exist_ok=True)
@@ -198,6 +210,99 @@ class Plain(pl.LightningModule):
             writer.writeheader()
             for row in sorted(self.epoch_history, key=lambda x: x['epoch']):
                 writer.writerow(row)
+
+        return log_dir
+
+    def _get_split_dataset(self, split):
+        datamodule = getattr(self.trainer, 'datamodule', None)
+        if datamodule is None:
+            raise RuntimeError('Training datamodule is not available for export.')
+
+        return datamodule.ds(
+            rootdir=datamodule.conf.dataset_root,
+            dset=split,
+            transform=data_transforms['val'],
+            conf=datamodule.conf,
+        )
+
+    def _export_split_results(self, split, output_dir):
+        dataset = self._get_split_dataset(split)
+        datamodule = self.trainer.datamodule
+        configured_batch_size = int(getattr(datamodule.conf, 'export_batch_size', datamodule.conf.batch_size))
+        configured_num_workers = int(getattr(datamodule.conf, 'export_num_workers', datamodule.conf.num_workers))
+        export_batch_size = min(max(1, configured_batch_size), max(1, len(dataset)))
+        export_num_workers = max(0, configured_num_workers)
+        dataloader = DataLoader(
+            dataset,
+            batch_size=export_batch_size,
+            shuffle=False,
+            pin_memory=True,
+            num_workers=export_num_workers,
+            drop_last=False,
+        )
+
+        class_ids = list(range(self.hparams.num_classes))
+        class_names = [self.id_to_labels.get(class_id, str(class_id)) for class_id in class_ids]
+
+        rows = []
+        y_true = []
+        y_pred = []
+
+        was_training = self.training
+        export_device = getattr(self.trainer.strategy, 'root_device', self.device)
+        self.to(export_device)
+        self.eval()
+
+        print(
+            f'Exporting {split} predictions and confusion matrix... '
+            f'({len(dataset)} images, {len(dataloader)} batches, '
+            f'batch_size={export_batch_size}, workers={export_num_workers}, '
+            f'device={export_device})'
+        )
+
+        with torch.no_grad():
+            for batch in tqdm(dataloader, desc=f'Export {split}', leave=False):
+                data, label_ids, labels, file_ids = batch
+                data = data.to(export_device, non_blocking=True)
+
+                feats = self.net.feature(data)
+                logits = self.net.classifier(feats)
+                probs = torch.softmax(logits, dim=1)
+                preds = probs.argmax(dim=1)
+
+                probs_np = probs.detach().cpu().numpy()
+                preds_np = preds.detach().cpu().numpy()
+                label_ids_np = label_ids.detach().cpu().numpy()
+
+                for index in range(len(file_ids)):
+                    row = {
+                        'path': os.path.basename(str(file_ids[index])),
+                        'label': str(labels[index]),
+                        'classification': int(label_ids_np[index]),
+                    }
+
+                    for class_id in class_ids:
+                        row[f'prob_class_{class_id}'] = float(probs_np[index, class_id])
+
+                    rows.append(row)
+                    y_true.append(int(label_ids_np[index]))
+                    y_pred.append(int(preds_np[index]))
+
+        if was_training:
+            self.train()
+
+        predictions_path = os.path.join(output_dir, f'{split}_predictions.csv')
+        predictions_df = pd.DataFrame(rows)
+        predictions_columns = ['path', 'label', 'classification'] + [f'prob_class_{class_id}' for class_id in class_ids]
+        predictions_df = predictions_df[predictions_columns]
+        predictions_df.to_csv(predictions_path, index=False)
+
+        confusion = confusion_matrix(y_true, y_pred, labels=class_ids)
+        confusion_df = pd.DataFrame(confusion, index=class_names, columns=class_names)
+        confusion_path = os.path.join(output_dir, f'{split}_confusion_matrix.csv')
+        confusion_df.to_csv(confusion_path, index_label='true_class')
+        print(f'Saved {split} predictions to {predictions_path}')
+        print(f'Saved {split} confusion matrix to {confusion_path}')
 
     def on_test_start(self):
         """
