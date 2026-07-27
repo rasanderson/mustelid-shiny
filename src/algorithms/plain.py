@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import json
+import csv
 from datetime import datetime
 from tqdm import tqdm
 import random
@@ -77,6 +78,19 @@ class Plain(pl.LightningModule):
         self.best_acc = 0
         self.net.feat_init()
         self.net.setup_criteria()
+        self.epoch_history = []
+        self._train_epoch_losses = []
+        self._train_epoch_preds = []
+        self._train_epoch_labels = []
+        self._val_epoch_losses = []
+        self._val_epoch_preds = []
+        self._val_epoch_labels = []
+
+    def on_train_epoch_start(self):
+        """Reset train epoch accumulators."""
+        self._train_epoch_losses = []
+        self._train_epoch_preds = []
+        self._train_epoch_labels = []
 
     def training_step(self, batch, batch_idx):
         """
@@ -96,6 +110,12 @@ class Plain(pl.LightningModule):
         logits = self.net.classifier(feats)
         # Calculate loss
         loss = self.net.criterion_cls(logits, label_ids)
+        preds = logits.argmax(dim=1)
+
+        self._train_epoch_losses.append(loss.detach().cpu().item())
+        self._train_epoch_preds.append(preds.detach().cpu().numpy())
+        self._train_epoch_labels.append(label_ids.detach().cpu().numpy())
+
         self.log("train_loss", loss)
         
         return loss
@@ -105,6 +125,9 @@ class Plain(pl.LightningModule):
         Hook function called at the start of validation. Initializes storage for validation outputs.
         """
         self.val_st_outs = []
+        self._val_epoch_losses = []
+        self._val_epoch_preds = []
+        self._val_epoch_labels = []
 
     def validation_step(self, batch, batch_idx):
         """
@@ -118,7 +141,12 @@ class Plain(pl.LightningModule):
         # Forward pass
         feats = self.net.feature(data)
         logits = self.net.classifier(feats)
+        loss = self.net.criterion_cls(logits, label_ids)
         preds = logits.argmax(dim=1)
+
+        self._val_epoch_losses.append(loss.detach().cpu().item())
+        self._val_epoch_preds.append(preds.detach().cpu().numpy())
+        self._val_epoch_labels.append(label_ids.detach().cpu().numpy())
         
         self.val_st_outs.append((preds.detach().cpu().numpy(),
                                  label_ids.detach().cpu().numpy()))
@@ -129,7 +157,47 @@ class Plain(pl.LightningModule):
         """
         total_preds = np.concatenate([x[0] for x in self.val_st_outs], axis=0)
         total_label_ids = np.concatenate([x[1] for x in self.val_st_outs], axis=0)
+        train_preds = np.concatenate(self._train_epoch_preds, axis=0)
+        train_labels = np.concatenate(self._train_epoch_labels, axis=0)
+        val_preds = np.concatenate(self._val_epoch_preds, axis=0)
+        val_labels = np.concatenate(self._val_epoch_labels, axis=0)
+
+        _, _, train_mic_acc = acc(train_preds, train_labels)
+        _, _, val_mic_acc = acc(val_preds, val_labels)
+
+        self.epoch_history.append({
+            'epoch': int(self.current_epoch),
+            'train_loss': float(np.mean(self._train_epoch_losses)),
+            'val_loss': float(np.mean(self._val_epoch_losses)),
+            'train_acc': float(train_mic_acc * 100),
+            'val_acc': float(val_mic_acc * 100)
+        })
+
         self.eval_logging(total_preds, total_label_ids)
+
+    def on_fit_end(self):
+        """Write one row per epoch to loss_accuracy.csv in the logger directory."""
+        if not self.epoch_history or self.logger is None:
+            return
+
+        log_dir = getattr(self.logger, 'log_dir', None)
+        if not log_dir:
+            save_dir = getattr(self.logger, 'save_dir', None)
+            name = getattr(self.logger, 'name', '')
+            version = getattr(self.logger, 'version', '')
+            if save_dir is None:
+                return
+            log_dir = os.path.join(save_dir, str(name), f'version_{version}')
+
+        os.makedirs(log_dir, exist_ok=True)
+        csv_path = os.path.join(log_dir, 'loss_accuracy.csv')
+        fieldnames = ['epoch', 'train_loss', 'val_loss', 'train_acc', 'val_acc']
+
+        with open(csv_path, 'w', newline='') as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            for row in sorted(self.epoch_history, key=lambda x: x['epoch']):
+                writer.writerow(row)
 
     def on_test_start(self):
         """
