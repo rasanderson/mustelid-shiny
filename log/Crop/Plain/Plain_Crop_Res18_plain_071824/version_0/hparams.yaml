@@ -1,11 +1,13 @@
 conf_id: Crop_Res18_plain_071824
 algorithm: Plain
 log_dir: Crop
-num_epochs: 300
+num_epochs: 3
 log_interval: 10
 parallel: 0
 dataset_root: ./data/imgs
-dataset_name: Custom_Crop
+dataset_name: Custom_PreCropped
+enable_auto_cropping: false
+cropped_images_dir: cropped_resized
 annotation_dir: ./data/imgs
 split_path: ./data/imgs/annotations.csv
 test_size: 0.2

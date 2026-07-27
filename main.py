@@ -18,6 +18,19 @@ from src.utils import batch_detection_cropping
 from src.utils import data_splitting
 
 app = typer.Typer(pretty_exceptions_short=True, pretty_exceptions_show_locals=False)
+
+
+def _run_cropping(conf):
+    """Run MegaDetector-based cropping for train/val/test annotation splits."""
+    cropped_dir = os.path.join(conf.dataset_root, conf.cropped_images_dir)
+    if conf.test:
+        test_annotations = os.path.join(conf.dataset_root, 'test_annotations.csv')
+        batch_detection_cropping.batch_detection_cropping(conf.dataset_root, cropped_dir, test_annotations)
+    else:
+        train_annotations = os.path.join(conf.dataset_root, 'train_annotations.csv')
+        val_annotations = os.path.join(conf.dataset_root, 'val_annotations.csv')
+        batch_detection_cropping.batch_detection_cropping(conf.dataset_root, cropped_dir, train_annotations)
+        batch_detection_cropping.batch_detection_cropping(conf.dataset_root, cropped_dir, val_annotations)
 # %%
 @app.command()
 def main(
@@ -72,6 +85,12 @@ def main(
     conf.test = test
     conf.predict = predict
     conf.predict_root = predict_root
+    conf.cropped_images_dir = conf.get('cropped_images_dir', 'cropped_resized')
+    conf.enable_auto_cropping = conf.get('enable_auto_cropping', True)
+
+    # Pre-cropped datasets should never trigger auto-cropping.
+    if conf.dataset_name == 'Custom_PreCropped':
+        conf.enable_auto_cropping = False
 
     # Set a global seed for reproducibility
     pl.seed_everything(seed)
@@ -90,19 +109,8 @@ def main(
         else:
             raise ValueError('Invalid split type: {}. Available options: random, location, sequence.'.format(conf.split_type))
         
-    if not conf.predict:
-        # Get the path to the annotation files, and we only want to do this if we are not predicting
-        if conf.test:
-            test_annotations = os.path.join(conf.dataset_root, 'test_annotations.csv')
-            # Crop test data (most likely we don't need this)
-            batch_detection_cropping.batch_detection_cropping(conf.dataset_root, os.path.join(conf.dataset_root, "cropped_resized"), test_annotations)
-        else:
-            train_annotations = os.path.join(conf.dataset_root, 'train_annotations.csv')
-            val_annotations = os.path.join(conf.dataset_root, 'val_annotations.csv')
-            # Crop training data
-            batch_detection_cropping.batch_detection_cropping(conf.dataset_root, os.path.join(conf.dataset_root, "cropped_resized"), train_annotations)
-            # Crop validation data
-            batch_detection_cropping.batch_detection_cropping(conf.dataset_root, os.path.join(conf.dataset_root, "cropped_resized"), val_annotations)
+    if not conf.predict and conf.enable_auto_cropping:
+        _run_cropping(conf)
 
     # Dataset and algorithm loading based on the configuration
     dataset = datasets.__dict__[conf.dataset_name](conf=conf)

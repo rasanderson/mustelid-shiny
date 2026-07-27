@@ -68,6 +68,13 @@ conda activate PT_Finetuning
 python main.py
 ```
 
+To train on images that are already pre-cropped, set:
+
+```yaml
+dataset_name: Custom_PreCropped
+enable_auto_cropping: False
+```
+
 Output weights are saved to the `weights/` directory and can be loaded directly into PyTorch-Wildlife.
 
 ## Data Preparation

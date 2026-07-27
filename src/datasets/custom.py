@@ -11,7 +11,8 @@ import pytorch_lightning as pl
 
 # Exportable class names for external use
 __all__ = [
-    'Custom_Crop'
+    'Custom_Crop',
+    'Custom_PreCropped'
 ]
 
 # Define the allowed image extensions  
@@ -45,6 +46,26 @@ data_transforms = {
         transforms.Normalize(mean, std)
     ]),
 }
+
+
+def get_split_name(dset):
+    return 'test' if dset == 'test' else dset
+
+
+def validate_file_exists(file_path, file_kind):
+    if not os.path.exists(file_path):
+        raise FileNotFoundError('Missing {}: {}'.format(file_kind, file_path))
+
+
+def resolve_dir_path(rootdir, configured_dir):
+    """Resolve a configured directory path without double-joining project-relative roots."""
+    root_norm = os.path.normpath(rootdir)
+    conf_norm = os.path.normpath(configured_dir)
+    if os.path.isabs(conf_norm):
+        return conf_norm
+    if conf_norm == root_norm or conf_norm.startswith(root_norm + os.sep):
+        return conf_norm
+    return os.path.normpath(os.path.join(rootdir, configured_dir))
 
 class Custom_Base_DS(Dataset):
     """
@@ -142,7 +163,7 @@ class Custom_Crop_DS(Custom_Base_DS):
     Inherits from Custom_Base_DS and includes specific handling for cropped data.
     """
 
-    def __init__(self, rootdir, dset='train', transform=None):
+    def __init__(self, rootdir, dset='train', transform=None, conf=None):
         """
         Initialize the Custom_Crop_DS with the dataset directory, type, and transformations.
 
@@ -150,13 +171,40 @@ class Custom_Crop_DS(Custom_Base_DS):
             rootdir (str): Directory containing the dataset.
             dset (str): Type of dataset (train, val, test, predict).
             transform (callable, optional): Transformations to be applied to each data sample.
+            conf (object, optional): Configuration object with crop paths and file naming.
         """
         self.predict = dset == 'predict'
+        self.conf = conf
         super().__init__(rootdir=rootdir, transform=transform, predict=self.predict)
-        self.img_root = rootdir if self.predict else os.path.join(self.rootdir, 'cropped_resized')
+        crop_dir = getattr(self.conf, 'cropped_images_dir', 'cropped_resized') if self.conf is not None else 'cropped_resized'
+        self.img_root = rootdir if self.predict else resolve_dir_path(self.rootdir, crop_dir)
         if not self.predict:
-            self.ann = pd.read_csv(os.path.join(self.rootdir, 'cropped_resized', '{}_annotations_cropped.csv'
-                                                .format('test' if dset == 'test' else dset)))
+            split_name = get_split_name(dset)
+            annotations_path = os.path.join(self.img_root, '{}_annotations_cropped.csv'.format(split_name))
+            validate_file_exists(annotations_path, 'cropped annotation file')
+            validate_file_exists(self.img_root, 'cropped image directory')
+            self.ann = pd.read_csv(annotations_path)
+        else:
+            validate_file_exists(self.img_root, 'prediction image directory')
+        self.load_data()
+
+
+class Custom_PreCropped_DS(Custom_Base_DS):
+    """Dataset class for pre-cropped inputs without running additional cropping."""
+
+    def __init__(self, rootdir, dset='train', transform=None, conf=None):
+        self.predict = dset == 'predict'
+        self.conf = conf
+        super().__init__(rootdir=rootdir, transform=transform, predict=self.predict)
+        self.img_root = rootdir
+        if not self.predict:
+            split_name = get_split_name(dset)
+            annotations_path = os.path.join(self.rootdir, '{}_annotations.csv'.format(split_name))
+            validate_file_exists(annotations_path, 'annotation file')
+            validate_file_exists(self.img_root, 'image directory')
+            self.ann = pd.read_csv(annotations_path)
+        else:
+            validate_file_exists(self.img_root, 'prediction image directory')
         self.load_data()
 
 
@@ -186,13 +234,13 @@ class Custom_Base(pl.LightningDataModule):
         print('Loading datasets...')
         # Load datasets for different modes (training, validation, testing, prediction)
         if self.conf.predict:
-            self.dset_pr = self.ds(rootdir=self.conf.predict_root, dset='predict', transform=data_transforms['val'])
+            self.dset_pr = self.ds(rootdir=self.conf.predict_root, dset='predict', transform=data_transforms['val'], conf=self.conf)
         elif self.conf.test:
-            self.dset_te = self.ds(rootdir=self.conf.dataset_root, dset='test', transform=data_transforms['val'])
+            self.dset_te = self.ds(rootdir=self.conf.dataset_root, dset='test', transform=data_transforms['val'], conf=self.conf)
             self.id_to_labels = {i: l for i, l in np.unique(pd.Series(zip(self.dset_te.label_ids, self.dset_te.labels)))}
         else:
-            self.dset_tr = self.ds(rootdir=self.conf.dataset_root, dset='train', transform=data_transforms['train'])
-            self.dset_val = self.ds(rootdir=self.conf.dataset_root, dset='val', transform=data_transforms['val'])
+            self.dset_tr = self.ds(rootdir=self.conf.dataset_root, dset='train', transform=data_transforms['train'], conf=self.conf)
+            self.dset_val = self.ds(rootdir=self.conf.dataset_root, dset='val', transform=data_transforms['val'], conf=self.conf)
 
             self.id_to_labels = {i: l for i, l in np.unique(pd.Series(zip(self.dset_tr.label_ids, self.dset_tr.labels)))}
             # Calculate class counts and label mappings
@@ -252,4 +300,12 @@ class Custom_Crop(Custom_Base):
             conf (object): Configuration object containing dataset paths and other settings.
         """
         self.ds = Custom_Crop_DS
+        super().__init__(conf=conf)
+
+
+class Custom_PreCropped(Custom_Base):
+    """Custom data module for datasets that are already pre-cropped."""
+
+    def __init__(self, conf):
+        self.ds = Custom_PreCropped_DS
         super().__init__(conf=conf)

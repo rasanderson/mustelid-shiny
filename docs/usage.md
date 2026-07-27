@@ -77,7 +77,9 @@ All training parameters live in `configs/config.yaml`. Edit this file before run
 | Parameter | Description |
 |---|---|
 | `dataset_root` | Root directory where images are stored |
-| `dataset_name` | Dataset type (`Custom_Crop` for fine-tuning) |
+| `dataset_name` | Dataset type (`Custom_Crop` or `Custom_PreCropped`) |
+| `enable_auto_cropping` | `True` runs MegaDetector cropping before training; set `False` for pre-cropped inputs |
+| `cropped_images_dir` | Output/input directory used by `Custom_Crop` (default: `cropped_resized`) |
 | `annotation_dir` | Directory containing annotation CSV files |
 | `split_path` | Path to single CSV for auto-splitting |
 | `test_size` | Proportion of data for test set (e.g. `0.2`) |
@@ -110,6 +112,25 @@ All training parameters live in `configs/config.yaml`. Edit this file before run
 | `gamma` | LR scheduler decay factor |
 
 > **Architecture note:** The current version supports only `PlainResNetClassifier` with ResNet-18 or ResNet-50 backbones. The classifier head and feature extractor are trained with separate optimizers, which is required for compatibility with the PyTorch-Wildlife framework.
+
+### Cropping Modes
+
+You can run training in either crop mode or pre-cropped mode:
+
+```yaml
+# Option 1: automatic MegaDetector cropping (default)
+dataset_name: Custom_Crop
+enable_auto_cropping: True
+cropped_images_dir: cropped_resized
+```
+
+```yaml
+# Option 2: images are already pre-cropped (no additional cropping)
+dataset_name: Custom_PreCropped
+enable_auto_cropping: False
+```
+
+In pre-cropped mode, training reads `train_annotations.csv` and `val_annotations.csv` (automatically generated if e.g. random split is used) from `dataset_root` and does not call the crop utility.
 
 ---
 
@@ -150,3 +171,5 @@ A common workflow pairs MegaDetector detection upstream with MegaDetector-Classi
 2. Use `src/utils/batch_detection_cropping.py` to generate cropped images from MegaDetector outputs
 3. Train MegaDetector-Classifier on the cropped detections
 4. Deploy the resulting classifier through [PyTorch-Wildlife](https://github.com/microsoft/PytorchWildlife)
+
+If you already have pre-cropped inputs, use `Custom_PreCropped` and set `enable_auto_cropping: False` to skip this step.

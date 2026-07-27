@@ -2,13 +2,15 @@
 conf_id: Crop_Res18_plain_071824
 algorithm: Plain
 log_dir: Crop
-num_epochs: 300
+num_epochs: 3
 log_interval: 10
 parallel: 0
 
 # data
 dataset_root: ./data/imgs
-dataset_name: Custom_Crop
+dataset_name: Custom_PreCropped
+enable_auto_cropping: False
+cropped_images_dir: cropped_resized
 # annotation directory (if you have train/val/test splits)
 annotation_dir: ./data/imgs
 # data splitting (if you don't have train/val/test splits)
