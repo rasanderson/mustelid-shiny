@@ -1,7 +1,7 @@
 true_class,mink,otter,pinemarten,polecat,stoat,weasel
 mink,1,0,0,0,0,0
-otter,1,0,0,0,0,0
-pinemarten,0,0,0,0,0,1
+otter,0,1,0,0,0,0
+pinemarten,0,0,1,0,0,0
 polecat,0,0,0,1,0,0
-stoat,0,0,0,0,0,1
+stoat,0,0,0,0,1,0
 weasel,0,0,0,0,0,1
