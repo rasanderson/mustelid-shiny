@@ -29,6 +29,7 @@ demo_data/**/*.JPG
 
 # Model weights too big to commit
 weights/
+deepfaune/*.pt
 
 loss_accuracy.csv
 metrics.csv
