@@ -3,6 +3,7 @@
 Inference-only pipeline for identifying UK mustelid species (mink, otter, pine
 marten, polecat, stoat, weasel) in camera-trap images.
 
+## Two-stage pipeline (debugging)
 The pipeline has two stages:
 
 1. **`deepfaune/extractMustelidCrop.py`** — runs the [DeepFaune](https://www.deepfaune.cnrs.fr/)
@@ -12,6 +13,9 @@ The pipeline has two stages:
 2. **`predict_image.py`** — classifies a single (cropped) image with a
    fine-tuned ResNet-50 mustelid classifier, producing a species prediction
    and per-class confidences as JSON.
+
+## Single-stage pipeline (deployment)
+**`predict_mustelid.py`** uses the DeepFaune model and if it detects a mustelid the bounding boxes are passed through to the 6-species classifier. A CSV is generated as output, with bounding box of detected mustelid, plust the 6 probability values. If DeepFaune does not detect a mustelid then all probabilities are tagged as 0.
 
 ## Installation
 
