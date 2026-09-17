@@ -1,3 +1,8 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+# Tested with Python 3.11. Create the conda environment with this version
+# before installing this file; pip requirements cannot select Python itself.
+
 absl-py==2.5.0
 annotated-doc==0.0.5
 anyio==4.15.1
@@ -38,7 +43,7 @@ numpy==2.3.5
 nvidia-ml-py==13.610.43
 opencv-python==5.0.0.93
 opencv-python-headless==5.0.0.93
-packaging @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_packaging_1785888127/work
+packaging==26.3
 pandas==3.0.5
 pi_heif==1.4.0
 pillow==12.3.0
@@ -61,6 +66,7 @@ safetensors==0.8.0
 sahi==0.12.6
 scipy==1.17.1
 seaborn==0.13.2
+setuptools==80.9.0
 shapely==2.1.2
 shellingham==1.5.4
 six==1.17.0
