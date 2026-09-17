@@ -72,7 +72,7 @@ shellingham==1.5.4
 six==1.17.0
 smmap==5.0.3
 sympy==1.14.0
-tensorboard==2.21.0
+tensorboard==2.20.0
 tensorboard-data-server==0.7.2
 termcolor==3.3.0
 thop==0.1.1.post2209072238

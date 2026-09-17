@@ -161,6 +161,8 @@ class BirdModel(nn.Module):
             path += ".pt"
         try:
             params = torch.load(path, map_location=self.device)
+            # checkpoints may be stored in fp16 to save disk space; compute stays fp32
+            params = {k: v.float() if torch.is_floating_point(v) else v for k, v in params.items()}
             self.load_state_dict(params)
         except Exception as e:
             print("Can't load bird checkpoint model because :\n\n " + str(e), file=sys.stderr)
@@ -221,7 +223,9 @@ class Model(nn.Module):
                                 "({})".format(args['num_classes'], self.nbclasses))
             self.backbone = args['backbone']
             self.nbclasses = args['num_classes']
-            self.load_state_dict(params['state_dict'])
+            # checkpoints may be stored in fp16 to save disk space; compute stays fp32
+            state_dict = {k: v.float() if torch.is_floating_point(v) else v for k, v in params['state_dict'].items()}
+            self.load_state_dict(state_dict)
         except Exception as e:
             print("Can't load checkpoint model because :\n\n " + str(e), file=sys.stderr)
             raise e
