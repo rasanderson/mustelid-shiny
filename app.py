@@ -3,7 +3,9 @@
 # python -m shiny run --reload app.py
 import asyncio
 import base64
+import io
 
+from PIL import Image, ImageDraw
 from shiny import App, reactive, render, req, ui
 
 from process_mustelid import classify_mustelid_image, classify_result_category
@@ -13,6 +15,8 @@ RESULT_MESSAGES = {
     "other": "Other species",
     "mustelid": "Mustelid found",
 }
+# Categories where DeepFaune found an animal worth boxing
+BOXABLE_CATEGORIES = {"mustelid", "other"}
 
 app_ui = ui.page_fillable(
     ui.layout_sidebar(
@@ -31,6 +35,8 @@ app_ui = ui.page_fillable(
 )
 
 def server(input, output, session):
+    detection_box = reactive.value(None)  # (x1, y1, x2, y2) or None
+
     @reactive.extended_task
     async def run_identify(image_path: str) -> dict:
         return await asyncio.to_thread(classify_mustelid_image, image_path)
@@ -38,6 +44,11 @@ def server(input, output, session):
     @reactive.effect
     def _update_identify_button():
         ui.update_action_button("identify", disabled=input.image_upload() is None)
+
+    @reactive.effect
+    @reactive.event(input.image_upload)
+    def _reset_box_on_upload():
+        detection_box.set(None)
 
     @reactive.effect
     @reactive.event(input.identify)
@@ -51,6 +62,10 @@ def server(input, output, session):
         if status == "success":
             row = run_identify.result()
             category = classify_result_category(row["deepfaune_prediction"])
+            if category in BOXABLE_CATEGORIES:
+                detection_box.set((row["x1"], row["y1"], row["x2"], row["y2"]))
+            else:
+                detection_box.set(None)
             message = RESULT_MESSAGES[category]
             ui.modal_show(
                 ui.modal(message, title="Identification result", easy_close=True, footer=ui.modal_button("OK"))
@@ -72,20 +87,32 @@ def server(input, output, session):
         
         # Get the file path from the uploaded file
         file_path = file_info[0]["datapath"]
-        
-        # Read the image file and encode it as base64
-        with open(file_path, "rb") as f:
-            image_data = base64.b64encode(f.read()).decode()
-        
-        # Determine the MIME type based on the file name
-        file_name = file_info[0]["name"].lower()
-        if file_name.endswith((".jpg", ".jpeg")):
-            mime_type = "image/jpeg"
-        elif file_name.endswith(".png"):
-            mime_type = "image/png"
+        box = detection_box.get()
+
+        if box is None:
+            # Read the image file and encode it as base64
+            with open(file_path, "rb") as f:
+                image_data = base64.b64encode(f.read()).decode()
+
+            # Determine the MIME type based on the file name
+            file_name = file_info[0]["name"].lower()
+            if file_name.endswith((".jpg", ".jpeg")):
+                mime_type = "image/jpeg"
+            elif file_name.endswith(".png"):
+                mime_type = "image/png"
+            else:
+                mime_type = "image/jpeg"  # default
         else:
-            mime_type = "image/jpeg"  # default
-        
+            # Draw the detection box directly on the pixels so it scales with the image
+            image = Image.open(file_path).convert("RGB")
+            draw = ImageDraw.Draw(image)
+            line_width = max(3, round(min(image.size) * 0.006))
+            draw.rectangle(box, outline="red", width=line_width)
+            buffer = io.BytesIO()
+            image.save(buffer, format="JPEG")
+            image_data = base64.b64encode(buffer.getvalue()).decode()
+            mime_type = "image/jpeg"
+
         # Return an img tag with base64 encoded data, capped to 1/4 of the browser width
         return ui.img(
             src=f"data:{mime_type};base64,{image_data}",
