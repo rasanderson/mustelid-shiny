@@ -5,6 +5,7 @@ import asyncio
 import base64
 import io
 
+import pandas as pd
 from PIL import Image, ImageDraw
 from shiny import App, reactive, render, req, ui
 
@@ -17,6 +18,17 @@ RESULT_MESSAGES = {
 }
 # Categories where DeepFaune found an animal worth boxing
 BOXABLE_CATEGORIES = {"mustelid", "other"}
+# Fixed row order for the species probability table
+SPECIES_ROWS = [
+    "Other spp",
+    "Mustelid",
+    "Otter",
+    "Weasel",
+    "Pine marten",
+    "Stoat",
+    "Mink",
+    "Polecat",
+]
 
 app_ui = ui.page_fillable(
     ui.layout_sidebar(
@@ -28,6 +40,7 @@ app_ui = ui.page_fillable(
                 multiple=False
             ),
             ui.input_action_button("identify", "Identify", disabled=True, width="150px"),
+            ui.output_data_frame("species_table"),
             width="25%",
         ),
         ui.output_ui("image_display"),
@@ -36,6 +49,7 @@ app_ui = ui.page_fillable(
 
 def server(input, output, session):
     detection_box = reactive.value(None)  # (x1, y1, x2, y2) or None
+    species_probs = reactive.value(None)  # dict of {row_label: probability} or None
 
     @reactive.extended_task
     async def run_identify(image_path: str) -> dict:
@@ -49,6 +63,7 @@ def server(input, output, session):
     @reactive.event(input.image_upload)
     def _reset_box_on_upload():
         detection_box.set(None)
+        species_probs.set(None)
 
     @reactive.effect
     @reactive.event(input.identify)
@@ -66,6 +81,16 @@ def server(input, output, session):
                 detection_box.set((row["x1"], row["y1"], row["x2"], row["y2"]))
             else:
                 detection_box.set(None)
+            species_probs.set({
+                "Other spp": row["deepfaune_score"] if category == "other" else 0.0,
+                "Mustelid": row["deepfaune_score"] if category == "mustelid" else 0.0,
+                "Otter": row["prob_otter"],
+                "Weasel": row["prob_weasel"],
+                "Pine marten": row["prob_pinemarten"],
+                "Stoat": row["prob_stoat"],
+                "Mink": row["prob_mink"],
+                "Polecat": row["prob_polecat"],
+            })
             message = RESULT_MESSAGES[category]
             ui.modal_show(
                 ui.modal(message, title="Identification result", easy_close=True, footer=ui.modal_button("OK"))
@@ -118,6 +143,16 @@ def server(input, output, session):
             src=f"data:{mime_type};base64,{image_data}",
             style="max-width: 25vw; width: 100%; height: auto; display: block; margin-left: auto;"
         )
+
+    @render.data_frame
+    def species_table():
+        probs = species_probs.get()
+        if probs is None:
+            values = ["\u2014"] * len(SPECIES_ROWS)
+        else:
+            values = [round(probs[label], 3) for label in SPECIES_ROWS]
+        df = pd.DataFrame({"Species": SPECIES_ROWS, "Probability": values})
+        return render.DataGrid(df, width="100%")
 
 app = App(app_ui, server)
 
