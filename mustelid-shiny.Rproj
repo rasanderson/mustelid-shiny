@@ -11,3 +11,7 @@ Encoding: UTF-8
 
 RnwWeave: Sweave
 LaTeX: pdfLaTeX
+
+PythonType: conda
+PythonVersion: 3.11.16
+PythonPath: ~/miniconda3/envs/mustelid-shiny/bin/python3.11
