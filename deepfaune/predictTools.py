@@ -56,7 +56,7 @@ DEFAULTLOGIT = 15. # arbitrary default logit value, used for classes human/vehic
 ### PREDICTOR BASE
 ####################################################################################
 class PredictorBase(ABC):
-    def __init__(self, filenames, threshold, LANG, birdclassification=False, BATCH_SIZE=8, device=None):
+    def __init__(self, filenames, threshold, LANG, birdclassification=False, BATCH_SIZE=8, device=None, classifier=None):
         if device in [None, "auto"]:
             self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         if device in ["cpu", "cuda"]:
@@ -66,13 +66,18 @@ class PredictorBase(ABC):
         self.LANG = LANG
         self.BATCH_SIZE = BATCH_SIZE
         self.fileManager = FileManager(filenames)
-        if birdclassification:
+        if classifier is not None:
+            # reusing a previously built classifier (e.g. to avoid reloading weights)
+            self.classifier = classifier
+        elif birdclassification:
             self.classifier = ClassifierWithBirds(self.device)
+        else:
+            self.classifier = Classifier(self.device)
+        if birdclassification:
             self.txt_classes_lang = txt_animalclasses[LANG] + \
                 [txt_animalclasses[LANG][txt_animalclasses["en"].index("bird")]+" "+birdclass for birdclass in txt_birdclasses[LANG]] + txt_noanimalclasses[LANG]
             self.txt_classes_lang[txt_animalclasses["en"].index("bird")] += " "+ txt_undefined[LANG] # "bird" prediction is used for undefined birds
         else:
-            self.classifier = Classifier(self.device)
             self.txt_classes_lang = txt_animalclasses[LANG] + txt_noanimalclasses[LANG]
         self.cropped_data = torch.ones((self.BATCH_SIZE,3,CROP_SIZE,CROP_SIZE))
         self.nbclasses = len(self.txt_classes_lang)
@@ -228,8 +233,8 @@ class PredictorBase(ABC):
 ####################################################################################
 class PredictorImageBase(PredictorBase):
     @abstractmethod
-    def __init__(self, filenames, threshold, maxlag, LANG, birdclassification=False, BATCH_SIZE=8, device=None):
-        PredictorBase.__init__(self, filenames, threshold, LANG, birdclassification, BATCH_SIZE, device=device) # inherits all
+    def __init__(self, filenames, threshold, maxlag, LANG, birdclassification=False, BATCH_SIZE=8, device=None, classifier=None):
+        PredictorBase.__init__(self, filenames, threshold, LANG, birdclassification, BATCH_SIZE, device=device, classifier=classifier) # inherits all
         self.fileManager.findSequences(maxlag)
         self.fileManager.reorderBySeqnum()
         self.detector = None
@@ -345,9 +350,10 @@ class PredictorImageBase(PredictorBase):
 ####################################################################################
 class PredictorImage(PredictorImageBase):
     ## Predictor performing detections with a detector, from filenames
-    def __init__(self, filenames, threshold, maxlag, LANG, birdclassification, BATCH_SIZE=8, detectorname=DFYOLO_NAME, device=None):
-        PredictorImageBase.__init__(self, filenames, threshold, maxlag, LANG, birdclassification, BATCH_SIZE, device=device) # inherits all
-        self.detector = Detector(name=detectorname, device=self.device)
+    def __init__(self, filenames, threshold, maxlag, LANG, birdclassification, BATCH_SIZE=8, detectorname=DFYOLO_NAME, device=None, detector=None, classifier=None):
+        PredictorImageBase.__init__(self, filenames, threshold, maxlag, LANG, birdclassification, BATCH_SIZE, device=device, classifier=classifier) # inherits all
+        # reusing a previously built detector (e.g. to avoid reloading weights) if given
+        self.detector = detector if detector is not None else Detector(name=detectorname, device=self.device)
         self.humanboxes = dict()
 
 ####################################################################################
