@@ -33,3 +33,4 @@ deepfaune/*.pt
 
 loss_accuracy.csv
 metrics.csv
+.Rproj.user
