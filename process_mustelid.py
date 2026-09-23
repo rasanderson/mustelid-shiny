@@ -70,10 +70,14 @@ def get_species_model(checkpoint, device):
 
 def classify_result_category(deepfaune_prediction):
     """Map a DeepFaune prediction to 'no_animal', 'mustelid', or 'other'."""
-    if deepfaune_prediction == txt_empty["en"] or deepfaune_prediction == txt_undefined["en"]:
+    #if deepfaune_prediction == txt_empty["en"] or deepfaune_prediction == txt_undefined["en"]:
+    #    return "no_animal"
+    if deepfaune_prediction in {"empty", "human", "vehicle"}:
         return "no_animal"
     if deepfaune_prediction == "mustelid":
         return "mustelid"
+    if deepfaune_prediction == "otter":
+        return "otter"
     return "other"
 
 

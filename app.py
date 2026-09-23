@@ -15,9 +15,10 @@ RESULT_MESSAGES = {
     "no_animal": "No animal detected",
     "other": "Other species",
     "mustelid": "Mustelid found",
+    "otter": "Otter found",
 }
 # Categories where DeepFaune found an animal worth boxing
-BOXABLE_CATEGORIES = {"mustelid", "other"}
+BOXABLE_CATEGORIES = {"mustelid", "otter", "other"}
 # Fixed row order for the species probability table
 SPECIES_ROWS = [
     "Other spp",
@@ -84,7 +85,7 @@ def server(input, output, session):
             species_probs.set({
                 "Other spp": row["deepfaune_score"] if category == "other" else 0.0,
                 "Mustelid": row["deepfaune_score"] if category == "mustelid" else 0.0,
-                "Otter": row["prob_otter"],
+                "Otter": row["deepfaune_score"] if category == "otter" else 0.0,
                 "Weasel": row["prob_weasel"],
                 "Pine marten": row["prob_pinemarten"],
                 "Stoat": row["prob_stoat"],
