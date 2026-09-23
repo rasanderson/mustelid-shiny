@@ -56,3 +56,22 @@ mustelid-shiny/
 ## Citation
 
 See [`citation.cff`](citation.cff).
+
+# Running locally
+It does not appear to be posssible (despite documentation) to run Shiny for Python apps from VS Code simply by clicking on the "Run" button. Instead, in a Terminal, need:
+
+```
+mamba activate mustelid-shiny
+shiny run app.py
+```
+
+This gives a local URL which can be opened both within VS Code and an external browser to test the code locally.
+
+# Deployment to shinyapps.io
+**Note:** Posit have announced that they are migrating hosted apps from shinyapps.io to Posit Connect Cloud by end of December 2026 so these instructions may change slightly. The application is very large, due to the model weights files, at about 700 Mb, but this is well-within the shinyapps.io 5 Gb limit. However, model inference requires that available memory on the shinyapps.io application be set at maximum after it has been deployed. As the app is big, the TIMEOUT option needs to be exported else deployment times out mid-way through the process:
+
+```
+mamba activate mustelid-shiny
+export CONNECT_REQUEST_TIMEOUT=36000
+rsconnect deploy shiny ~/pete/mustelid/mustelid-shiny --name naturalandenvironmentalscience --title mustelid
+```
