@@ -86,11 +86,11 @@ def server(input, output, session):
                 "Other spp": row["deepfaune_score"] if category == "other" else 0.0,
                 "Mustelid": row["deepfaune_score"] if category == "mustelid" else 0.0,
                 "Otter": row["deepfaune_score"] if category == "otter" else 0.0,
-                "Weasel": row["prob_weasel"],
-                "Pine marten": row["prob_pinemarten"],
-                "Stoat": row["prob_stoat"],
-                "Mink": row["prob_mink"],
-                "Polecat": row["prob_polecat"],
+                "Weasel": row["prob_weasel"] * row["deepfaune_score"] if category == "mustelid" else 0.0,
+                "Pine marten": row["prob_pinemarten"] * row["deepfaune_score"] if category == "mustelid" else 0.0,
+                "Stoat": row["prob_stoat"] * row["deepfaune_score"] if category == "mustelid" else 0.0,
+                "Mink": row["prob_mink"] * row["deepfaune_score"] if category == "mustelid" else 0.0,
+                "Polecat": row["prob_polecat"] * row["deepfaune_score"] if category == "mustelid" else 0.0,
             })
             message = RESULT_MESSAGES[category]
             ui.modal_show(
