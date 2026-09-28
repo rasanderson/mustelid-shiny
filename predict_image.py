@@ -7,11 +7,10 @@ from src.models import classification as pw_classification
 
 DEFAULT_CHECKPOINT = (
     "weights/Crop/Plain/"
-    "Crop_Res50_plain_071824-0-epoch=14-valid_mac_acc=81.92.ckpt"
+    "Crop_Res50_plain_071824-0-epoch=14-valid_mac_acc=83.51.ckpt"
 )
 CLASS_NAMES = [
     "mink",
-    "otter",
     "pinemarten",
     "polecat",
     "stoat",
