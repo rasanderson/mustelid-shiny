@@ -1,7 +1,7 @@
 conf_id: Crop_Res50_plain_071824
 algorithm: Plain
 log_dir: Crop
-num_epochs: 15
+num_epochs: 25
 log_interval: 10
 parallel: 0
 dataset_root: ./data/imgs
@@ -18,7 +18,7 @@ batch_size: 32
 num_workers: 4
 export_batch_size: 256
 export_num_workers: 4
-num_classes: 6
+num_classes: 5
 model_name: PlainResNetClassifier
 num_layers: 50
 weights_init: ImageNet
@@ -37,8 +37,7 @@ predict: false
 predict_root: ''
 id_to_labels:
   0: mink
-  1: otter
-  2: pinemarten
-  3: polecat
-  4: stoat
-  5: weasel
+  1: pinemarten
+  2: polecat
+  3: stoat
+  4: weasel

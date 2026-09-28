@@ -26,6 +26,7 @@ archive/
 # Ignore jpg under data
 data/**/*.jpg
 demo_data/**/*.JPG
+data/imgs_6spp
 
 # Model weights too big to commit
 weights/
