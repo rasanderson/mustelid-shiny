@@ -93,9 +93,6 @@ def server(input, output, session):
                 "Polecat": row["prob_polecat"] * row["deepfaune_score"] if category == "mustelid" else 0.0,
             })
             message = RESULT_MESSAGES[category]
-            ui.modal_show(
-                ui.modal(message, title="Identification result", easy_close=True, footer=ui.modal_button("OK"))
-            )
         elif status == "error":
             try:
                 run_identify.result()
