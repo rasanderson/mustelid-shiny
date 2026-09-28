@@ -22,7 +22,6 @@ BOXABLE_CATEGORIES = {"mustelid", "otter", "other"}
 # Fixed row order for the species probability table
 SPECIES_ROWS = [
     "Other spp",
-    "Mustelid",
     "Otter",
     "Weasel",
     "Pine marten",
@@ -84,7 +83,7 @@ def server(input, output, session):
                 detection_box.set(None)
             species_probs.set({
                 "Other spp": row["deepfaune_score"] if category == "other" else 0.0,
-                "Mustelid": row["deepfaune_score"] if category == "mustelid" else 0.0,
+                # "Mustelid": row["deepfaune_score"] if category == "mustelid" else 0.0,
                 "Otter": row["deepfaune_score"] if category == "otter" else 0.0,
                 "Weasel": row["prob_weasel"] * row["deepfaune_score"] if category == "mustelid" else 0.0,
                 "Pine marten": row["prob_pinemarten"] * row["deepfaune_score"] if category == "mustelid" else 0.0,
