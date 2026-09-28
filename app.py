@@ -71,12 +71,21 @@ def server(input, output, session):
     @reactive.event(input.identify)
     def _start_identify():
         file_info = req(input.image_upload())
+        ui.modal_show(
+            ui.modal(
+                "Processing image, please wait...",
+                title=None,
+                easy_close=False,
+                footer=None,
+            )
+        )
         run_identify(file_info[0]["datapath"])
 
     @reactive.effect
     def _show_identify_result():
         status = run_identify.status()
         if status == "success":
+            ui.modal_remove()
             row = run_identify.result()
             category = classify_result_category(row["deepfaune_prediction"])
             if category in BOXABLE_CATEGORIES:
@@ -95,6 +104,7 @@ def server(input, output, session):
             })
             message = RESULT_MESSAGES[category]
         elif status == "error":
+            ui.modal_remove()
             try:
                 run_identify.result()
             except Exception as e:
