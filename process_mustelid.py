@@ -75,6 +75,8 @@ def classify_result_category(deepfaune_prediction):
         return "no_animal"
     if deepfaune_prediction == "mustelid":
         return "mustelid"
+    if deepfaune_prediction == "badger":
+        return "badger"
     if deepfaune_prediction == "otter":
         return "otter"
     return "other"
